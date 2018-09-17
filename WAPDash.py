@@ -26,8 +26,8 @@ class AppState(object):
         #edef
 
         def __call__(self, event):
-            if event.id in self.idx:
-                return self.idx[event.id]
+            if event.ID in self.idx:
+                return self.idx[event.ID]
             #fi
 
             k = (event.day, event.month)
@@ -36,7 +36,7 @@ class AppState(object):
             #fi
 
             self.days[k] = self.days[k] + 1
-            self.idx[event.id] = self.days[k]
+            self.idx[event.ID] = self.days[k]
             return self.days[k]
         #edef
 
@@ -66,7 +66,8 @@ class AppState(object):
     #edef
             
     def refreshEvents(self):
-        self.events = Events.EventStructure([ e.standard() for Source in Events.sources for e in Source(redo=True) ]) 
+        events = Events.EventStructure([ e.standard() for Source in Events.sources for e in Source(redo=True) ]) 
+        self.events = events.query(startDate=datetime.datetime.today())
 #eclass
 
 ###########################
@@ -87,7 +88,7 @@ queryPanel = html.Div(children=[
         start_date=aState.events.firstDate,
         end_date=aState.events.lastDate
     ),
-    dcc.DropDown(
+    dcc.Dropdown(
         id='source-picker',
         options = [ {'label': source, 'value' : source } for source in sorted(aState.events.sources) ],
         multi=True,
@@ -123,10 +124,10 @@ def getFigureData(events):
     return {
             'data': [
                 go.Scatter(
-                    x=[ e.dtime for e in events if cat in e.category ],
-                    y=[ aState.di(e) for e in events if cat in e.category ],
-                    text=[ '%s, %s, %s' % (e.title, e.location, e.city) for e in events if cat in e.category ],
-                    customdata=[ e.id for e in events if cat in e.category ],
+                    x=[ e.date for e in events if cat in e.categories ],
+                    y=[ aState.di(e) for e in events if cat in e.categories ],
+                    text=[ '%s, %s, %s' % (e.title, e.location, e.city) for e in events if cat in e.categories ],
+                    customdata=[ e.ID for e in events if cat in e.categories ],
                     mode='markers',
                     opacity=0.7,
                     marker={
@@ -157,9 +158,9 @@ graphPanel = dcc.Graph(
 # Create the event information panel
 
 def drawEvent(event):
-    return [html.Div(children=[html.Img(src=event.thumbnail, style={'width': '25%', 'display': 'inline-block', 'vertical-align': 'top', 'height' : '100%'}),
+    return [html.Div(children=[html.Img(src=event.image, style={'width': '25%', 'display': 'inline-block', 'vertical-align': 'top', 'height' : '100%'}),
                                html.Div(children=[html.Div([html.H2(event.title)]),
-                                                  html.Div(str(event.dtime)),
+                                                  html.Div(str(event.date)),
                                                   html.Div(['%s, %s' % (event.location, event.city)]),
                                                   html.A(href=event.url, children=["We Are Public event"])],
                                         style={'width': '54%', 'display': 'inline-block', 'vertical-align': 'top'})
@@ -211,24 +212,27 @@ def display_event_data_callback(hoverData, clickData):
         return [html.Div()]
     elif clickEventID == hoverEventID:
         aState.lastClickEvent = currentEvent
-        return openEvent(aState.event[clickEventID])
+        return openEvent(aState.events[clickEventID])
     else:
-        return drawEvent(aState.event[hoverEventID])
+        return drawEvent(aState.events[hoverEventID])
     #fi
 #edef
 
 
 @app.callback( Output('calendar', 'figure'),
-                [ Input('date-picker-range', 'start_date'), Input('date-picker-range', 'end_date'),
-                  Input('category-picker', 'value'), Input('city-picker', 'value'),
+                [ Input('source-picker', 'value'),
+                  Input('date-picker-range', 'start_date'),
+                  Input('date-picker-range', 'end_date'),
+                  Input('category-picker', 'value'),
+                  Input('city-picker', 'value'),
                   Input('bookable-picker', 'values'),
                   Input('reset-button', 'n_clicks'),
                   Input('refresh-button', 'n_clicks') ] )
-def query(start_date, end_date, categories, cities, bookable, reset_clicks, refresh_clicks):
+def query(sources, start_date, end_date, categories, cities, bookable, reset_clicks, refresh_clicks):
 
-    if refresh_clicks > aState.getButtonCount('refresh-button'):
-      aState.refreshEvents()
-      aState.incrementButtonCount('refresh-button')
+    if (refresh_clicks is not None) and (refresh_clicks > aState.getButtonCount('refresh-button')):
+        aState.refreshEvents()
+        aState.incrementButtonCount('refresh-button')
     #fi
 
     start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
@@ -239,7 +243,8 @@ def query(start_date, end_date, categories, cities, bookable, reset_clicks, refr
                                              endDate=end_date,
                                              bookable=bookable,
                                              city=cities,
-                                             category=categories ))
+                                             category=categories,
+                                             sources=sources))
  #edef
 
 ###########################

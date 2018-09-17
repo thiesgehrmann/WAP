@@ -5,12 +5,27 @@ import json
 from collections import namedtuple
 import datetime
 
+from . import StandardEvent as StandardEvent
+
 class Tivoli(object):
     class Event(object):
         def __init__(self, data):
-            
             self.data = data
-           #edef
+        #edef
+        
+        def standard(self):
+            #ID, source, title, city, location, date, time, categories, url, bookable, image):
+            day   = int(self.data['day'].split(' ')[-1])
+            year  = int(self.data['year'])
+            month = int(self.data['yearMonth'][4:])
+            return StandardEvent.StandardEvent(self.data['name'] + 'Tivoli', 'Tivoli',self.data['title'], 'Utrecht',
+                                               'Tivoli', datetime.datetime(year, month, day), '0:0:0', ['Tivoli'],
+                                               self.data['link'],
+                                               False, self.data['image'])
+             
+        #edef
+    #eclass
+        
     
     def __init__(self, events=None, redo=False):
         if events is None:
@@ -19,6 +34,14 @@ class Tivoli(object):
         self.events = events
         
         self.__idx = None#{ e.id : i for (i,e) in enumerate(self.events) }
+    #edef
+    
+    def __getitem__(self, ID):
+        return self.eventsIDX[ID]
+    #edef
+    
+    def __iter__(self):
+        return self.events.__iter__()
     #edef
     
     def __retrieveEvents(self, redo):
