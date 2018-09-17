@@ -1,4 +1,4 @@
-from BIU import biu
+from .. import BIU.biu
 import pandas as pd
 
 import json
