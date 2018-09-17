@@ -82,7 +82,7 @@ class WeArePublic(object):
             return datetime.today().year
         #edef
 
-        __monthMap = dict( [ (m,i+1) for (i,m) in enumerate(['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']) ] )
+        __monthMap = dict( [ (m,i+1) for (i,m) in enumerate(['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']) ] )
         @property
         def dtime(self):
             return datetime.datetime(2018, self.__monthMap[self.month], self.day)
