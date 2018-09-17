@@ -8,7 +8,7 @@ from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.graph_objs as go
 
-import WeArePublic as WAP
+import Events as Events
 
 ###########################
 # Create a class to handle the y-axis for events on the same day
@@ -51,23 +51,22 @@ class AppState(object):
         self.di = self.DayIndex()
         self.lastClickEvent = datetime.datetime.now() - datetime.timedelta(seconds=10)
         self.buttonCounts = {}
-        self.wap = WAP.WeArePublic().query(startDate=datetime.datetime.today())
+        self.refreshEvents()
     #edef
 
     def getButtonCount(self, id):
-      if id not in self.buttonCounts:
-        self.buttonCounts[id] = 0
-      #fi
-      return self.buttonCounts[id]
+        if id not in self.buttonCounts:
+            self.buttonCounts[id] = 0
+        #fi
+        return self.buttonCounts[id]
     #edef
 
     def incrementButtonCount(self, id):
-      self.buttonCounts[id] = self.getButtonCount(id) + 1
+        self.buttonCounts[id] = self.getButtonCount(id) + 1
     #edef
-
-    def refreshWAP(self):
-        self.wap = WAP.WeArePublic(redo=True).query(startDate=datetime.datetime.today())
-    #edef
+            
+    def refreshEvents(self):
+        self.events = Events.EventStructure([ e.standard() for Source in Events.sources for e in Source(redo=True) ]) 
 #eclass
 
 ###########################
@@ -83,22 +82,27 @@ aState = AppState()
 queryPanel = html.Div(children=[
     dcc.DatePickerRange(
         id='date-picker-range',
-        min_date_allowed=aState.wap.firstDate,
-        max_date_allowed=aState.wap.lastDate,
-        start_date=aState.wap.firstDate,
-        end_date=aState.wap.lastDate
+        min_date_allowed=aState.events.firstDate,
+        max_date_allowed=aState.events.lastDate,
+        start_date=aState.events.firstDate,
+        end_date=aState.events.lastDate
     ),
+    dcc.DropDown(
+        id='source-picker',
+        options = [ {'label': source, 'value' : source } for source in sorted(aState.events.sources) ],
+        multi=True,
+        value=sorted(aState.events.sources)),
     dcc.Dropdown(
         id='category-picker',
-        options=[ { 'label' : cat, 'value' : cat } for cat in sorted(aState.wap.categories) ],
+        options=[ { 'label' : cat, 'value' : cat } for cat in sorted(aState.events.categories) ],
         multi=True,
-        value=sorted(aState.wap.categories)
+        value=sorted(aState.events.categories)
     ),
     dcc.Dropdown(
         id='city-picker',
-        options=[ { 'label' : city, 'value' : city } for city in sorted(aState.wap.cities) ],
+        options=[ { 'label' : city, 'value' : city } for city in sorted(aState.events.cities) ],
         multi=True,
-        value=sorted(aState.wap.cities)
+        value=sorted(aState.events.cities)
     ),
     dcc.Checklist(
         id='bookable-picker',
@@ -115,14 +119,14 @@ queryPanel = html.Div(children=[
 ###########################
 # Create the WAP scatter plot
 
-def getFigureData(wapObject):
+def getFigureData(events):
     return {
             'data': [
                 go.Scatter(
-                    x=[ e.dtime for e in wapObject if cat in e.category ],
-                    y=[ aState.di(e) for e in wapObject if cat in e.category ],
-                    text=[ '%s, %s, %s' % (e.title, e.location, e.city) for e in wapObject if cat in e.category ],
-                    customdata=[ e.id for e in wapObject if cat in e.category ],
+                    x=[ e.dtime for e in events if cat in e.category ],
+                    y=[ aState.di(e) for e in events if cat in e.category ],
+                    text=[ '%s, %s, %s' % (e.title, e.location, e.city) for e in events if cat in e.category ],
+                    customdata=[ e.id for e in events if cat in e.category ],
                     mode='markers',
                     opacity=0.7,
                     marker={
@@ -130,14 +134,14 @@ def getFigureData(wapObject):
                         'line': {'width': 0.5, 'color': 'white'}
                     },
                     name=cat
-                ) for cat in sorted(aState.wap.categories) # (Here use full-scope wap object because we want to maintain the category colors)
+                ) for cat in sorted(aState.events.categories) # (Here use full-scope wap object because we want to maintain the category colors)
             ],
             'layout': {
                 'margin': {'l': 15, 'r': 0, 'b': 15, 't': 5},
                 'dragmode': 'select',
                 'hovermode': 'closest',
                 'yaxis' : {'range' : [0, aState.di.max() + 1]},
-                'xaxis' : {'range' : [aState.wap.firstDate-datetime.timedelta(days=1), aState.wap.lastDate+datetime.timedelta(days=1)]},
+                'xaxis' : {'range' : [aState.events.firstDate-datetime.timedelta(days=1), aState.events.lastDate+datetime.timedelta(days=1)]},
                 'displayModeBar': False
             }
         }
@@ -145,7 +149,7 @@ def getFigureData(wapObject):
 
 graphPanel = dcc.Graph(
                 id='calendar',
-                figure=getFigureData(aState.wap),
+                figure=getFigureData(aState.events),
                 style={'width': '79%', 'display': 'inline-block', 'vertical-align': 'middle'}
             )
 
@@ -207,9 +211,9 @@ def display_event_data_callback(hoverData, clickData):
         return [html.Div()]
     elif clickEventID == hoverEventID:
         aState.lastClickEvent = currentEvent
-        return openEvent(aState.wap[clickEventID])
+        return openEvent(aState.event[clickEventID])
     else:
-        return drawEvent(aState.wap[hoverEventID])
+        return drawEvent(aState.event[hoverEventID])
     #fi
 #edef
 
@@ -223,7 +227,7 @@ def display_event_data_callback(hoverData, clickData):
 def query(start_date, end_date, categories, cities, bookable, reset_clicks, refresh_clicks):
 
     if refresh_clicks > aState.getButtonCount('refresh-button'):
-      aState.refreshWAP()
+      aState.refreshEvents()
       aState.incrementButtonCount('refresh-button')
     #fi
 
@@ -231,11 +235,11 @@ def query(start_date, end_date, categories, cities, bookable, reset_clicks, refr
     end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')
     bookable = True if (True in bookable) else None
 
-    return getFigureData(aState.wap.query(startDate=start_date,
-                                   endDate=end_date,
-                                   bookable=bookable,
-                                   city=cities,
-                                   category=categories ))
+    return getFigureData(aState.events.query(startDate=start_date,
+                                             endDate=end_date,
+                                             bookable=bookable,
+                                             city=cities,
+                                             category=categories ))
  #edef
 
 ###########################

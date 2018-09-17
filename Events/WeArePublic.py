@@ -1,9 +1,11 @@
-from .. import BIU.biu
+from .BIU import biu
 import pandas as pd
 
 import json
 from collections import namedtuple
 import datetime
+
+from . import StandardEvent as StandardEvent
 
 class WeArePublic(object):
     
@@ -15,6 +17,12 @@ class WeArePublic(object):
         #edef
 
         eventTupleType = namedtuple('WAPEvent', ['ID', 'title', 'day', 'month', 'date', 'price', 'bookable', 'url', 'category', 'location', 'city'])
+        
+        def standard(self):
+            return StandardEvent.StandardEvent(self.id, 'WeArePublic', self.title, self.city,
+                                       self.location, self.dtime, '0:0:0', self.category,
+                                       self.url, False, self.thumbnail)
+        #edef
 
         @property
         def tuple(self):
@@ -82,7 +90,7 @@ class WeArePublic(object):
             return datetime.today().year
         #edef
 
-        __monthMap = dict( [ (m,i+1) for (i,m) in enumerate(['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']) ] )
+        __monthMap = dict( [ (m,i+1) for (i,m) in enumerate(['jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']) ] )
         @property
         def dtime(self):
             return datetime.datetime(2018, self.__monthMap[self.month], self.day)

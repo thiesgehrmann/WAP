@@ -1,4 +1,4 @@
-from .. import BIU.biu
+from .BIU import biu
 import pandas as pd
 
 import json
@@ -8,6 +8,7 @@ import datetime
 class Tivoli(object):
     class Event(object):
         def __init__(self, data):
+            
             self.data = data
            #edef
     
@@ -17,7 +18,7 @@ class Tivoli(object):
         #fi0
         self.events = events
         
-        self.__idx = { e.id : i for (i,e) in enumerate(self.events) }
+        self.__idx = None#{ e.id : i for (i,e) in enumerate(self.events) }
     #edef
     
     def __retrieveEvents(self, redo):
@@ -26,6 +27,6 @@ class Tivoli(object):
             ao = biu.utils.Acquire(redo=redo).curl('https://www.tivolivredenburg.nl/wp-admin/admin-ajax.php?action=get_events&page=%d&categorie=' % page)
             eventList.extend(json.load(open(ao.acquire(),'r')))
         #efor
-        eventList = biu.processing.lst.uniq(eventList, key=lambda x: x['permalink'])
+        #eventList = biu.processing.lst.uniq(eventList, key=lambda x: x['permalink'])
         return [ self.Event(data) for data in eventList]
     #edef
